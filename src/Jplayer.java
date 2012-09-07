@@ -1,3 +1,5 @@
+import java.awt.event.ActionEvent;
+import java.awt.event.ActionListener;
 import java.io.IOException;
 import java.io.InputStream;
 
@@ -5,6 +7,7 @@ import javax.sound.sampled.AudioFormat;
 import javax.sound.sampled.AudioSystem;
 import javax.sound.sampled.LineUnavailableException;
 import javax.sound.sampled.SourceDataLine;
+import javax.swing.JFrame;
 
 public class Jplayer {
 	InputStream dataInputStream;
@@ -18,7 +21,16 @@ public class Jplayer {
 
 	final int WAVE_HEAD_SIZE = 44;
 
+	boolean isPlaying = false;
+
+	long audioFileSize = 0;
+	long readFileSize = 0;
+
 	public Jplayer() {
+
+	}
+
+	public void updateProgressBar(long current, long total) {
 
 	}
 
@@ -26,9 +38,11 @@ public class Jplayer {
 		if (path.regionMatches(0, "http://", 0, 7)) {
 			HttpLoad load = new HttpLoad(path);
 			dataInputStream = load.getInputStream();
+			audioFileSize = load.size;
 		} else {
 			LocalLoad load = new LocalLoad(path);
 			dataInputStream = load.getInputStream();
+			audioFileSize = load.size;
 		}
 
 		// parse wave or mp3
@@ -74,27 +88,52 @@ public class Jplayer {
 		line.start();
 	}
 
-	public void playback() throws IOException {
+	public void start() {
+		Thread playingThread = new Thread(new Runnable() {
 
-		while (true) {
+			@Override
+			public void run() {
+				// TODO Auto-generated method stub
+				try {
+					playback();
+				} catch (IOException e) {
+					// TODO Auto-generated catch block
+					e.printStackTrace();
+				}
+			}
+		});
+
+		playingThread.start();
+	}
+
+	public void playback() throws IOException {
+		readFileSize = 0;
+		isPlaying = true;
+
+		while (isPlaying) {
 			int len;
 
 			if (decoder == null) {
 				rawBuff = new byte[rawBuffSize];
 				len = dataInputStream.read(rawBuff);
+				readFileSize += len;
 			} else {
 				rawBuff = decoder.decode();
 				len = decoder.getRawSize();
+				readFileSize += decoder.decodeSize;
 			}
 
 			if (len <= 0)
 				break;
+
+			updateProgressBar(readFileSize, audioFileSize);
 
 			line.write(rawBuff, 0, len);
 		}
 	}
 
 	public void stop() {
+		isPlaying = false;
 		line.stop();
 	}
 
@@ -106,8 +145,8 @@ public class Jplayer {
 	public static void main(String[] args) throws IOException,
 			LineUnavailableException {
 		Jplayer player = new Jplayer();
-		
-		player.open("http://192.168.1.109/GoodTime.mp3");
+
+		player.open("http://127.0.0.1/GoodTime.mp3");
 
 		player.playback();
 
