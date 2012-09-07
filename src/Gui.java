@@ -27,6 +27,25 @@ public class Gui extends Jplayer {
 	int flag = 0;
 
 	@Override
+	public void showLrc(long ms) {
+		// TODO Auto-generated method stub
+		if (lrc == null)
+			return;
+
+		String lrcString = lrc.getLrcElement(ms);
+
+		if (lrcLine == lrc.currenLine)
+			return;
+
+		lrcLine = lrc.currenLine;
+		if (lrcString == null) {
+			lrcTextArea.setText(null);
+		} else {
+			lrcTextArea.setText(lrcString);
+		}
+	}
+
+	@Override
 	public void updateProgressBar(long current, long total) {
 		int percent = (int) (current * 100 / total);
 
@@ -112,7 +131,6 @@ public class Gui extends Jplayer {
 			@Override
 			public void mouseExited(MouseEvent arg0) {
 				// TODO Auto-generated method stub
-
 			}
 
 			@Override

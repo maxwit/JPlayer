@@ -1,5 +1,3 @@
-import java.awt.event.ActionEvent;
-import java.awt.event.ActionListener;
 import java.io.IOException;
 import java.io.InputStream;
 
@@ -7,13 +5,15 @@ import javax.sound.sampled.AudioFormat;
 import javax.sound.sampled.AudioSystem;
 import javax.sound.sampled.LineUnavailableException;
 import javax.sound.sampled.SourceDataLine;
-import javax.swing.JFrame;
+import javax.swing.text.Position.Bias;
 
 public class Jplayer {
 	InputStream dataInputStream;
 
 	AudioFormat format;
 	SourceDataLine line;
+
+	Lrc lrc;
 
 	Decoder decoder;
 	byte[] rawBuff;
@@ -25,6 +25,8 @@ public class Jplayer {
 
 	long audioFileSize = 0;
 	long readFileSize = 0;
+	long totalTime;
+	long currenTime;
 
 	public Jplayer() {
 
@@ -44,6 +46,10 @@ public class Jplayer {
 			dataInputStream = load.getInputStream();
 			audioFileSize = load.size;
 		}
+
+		lrc = new Lrc(path);
+		if (lrc.size == 0)
+			lrc = null;
 
 		// parse wave or mp3
 		byte[] id = new byte[4];
@@ -117,15 +123,20 @@ public class Jplayer {
 				rawBuff = new byte[rawBuffSize];
 				len = dataInputStream.read(rawBuff);
 				readFileSize += len;
+				currenTime = readFileSize
+						/ (long) (format.getSampleRate() * format.getChannels() * format
+								.getFrameSize());
 			} else {
 				rawBuff = decoder.decode();
 				len = decoder.getRawSize();
 				readFileSize += decoder.decodeSize;
+				currenTime = readFileSize * 8 * 1000 / decoder.bitRate;
 			}
 
 			if (len <= 0)
 				break;
 
+			showLrc(currenTime);
 			updateProgressBar(readFileSize, audioFileSize);
 
 			line.write(rawBuff, 0, len);
@@ -140,6 +151,26 @@ public class Jplayer {
 	public void close() {
 		line.drain();
 		line.close();
+	}
+
+	int lrcLine = -1;
+
+	public void showLrc(long ms) {
+		// TODO Auto-generated method stub
+		if (lrc == null)
+			return;
+
+		String lrcString = lrc.getLrcElement(ms);
+
+		if (lrcLine == lrc.currenLine)
+			return;
+
+		lrcLine = lrc.currenLine;
+		if (lrcString == null) {
+			System.out.println();
+		} else {
+			System.out.println(lrcString);
+		}
 	}
 
 	public static void main(String[] args) throws IOException,
